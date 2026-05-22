@@ -4,9 +4,16 @@
   "description": "AI-powered grant search and application pipeline built on Claude Code",
   "type": "module",
   "scripts": {
+    "dev": "npm run web:dev",
+    "build": "npm run web:build",
+    "start": "npm run web:start",
     "verify": "node verify-pipeline.mjs",
     "normalize": "node normalize-statuses.mjs",
-    "update": "node update-system.mjs check"
+    "update": "node update-system.mjs check",
+    "web:install": "cd web && npm install",
+    "web:dev": "cd web && npm run dev",
+    "web:build": "cd web && npm run build",
+    "web:start": "cd web && npm start"
   },
   "keywords": ["grants", "grants.gov", "federal-grants", "claude-code", "automation"],
   "license": "MIT"

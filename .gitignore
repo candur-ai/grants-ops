@@ -11,3 +11,9 @@ nofos/*
 *.lock
 .DS_Store
 /tmp/
+
+# Web app
+web/dist/
+web/node_modules/
+web/.env
+.vercel

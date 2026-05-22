@@ -1,0 +1,111 @@
+# grants-ops Organization Profile
+# Copy to config/profile.yml and fill in your details
+
+organization:
+  legal_name: "AI Incubator for Main Street"
+  ein: ""  # Pending — apply via IRS Form 1023
+  uei: ""  # Pending — register at SAM.gov
+  entity_type: nonprofit_501c3
+  address:
+    street: ""
+    city: ""
+    state: "KY"
+    zip: ""
+    country: "USA"
+  founded_year: 2026
+  staff_size: 0
+  annual_budget: 0
+
+sam_registration:
+  status: active
+  expiration_date: ""
+  uei: ""  # Pending
+
+contacts:
+  authorized_representative:
+    name: ""
+    title: ""
+    email: ""
+    phone: ""
+  e_business_poc:
+    name: ""
+    email: ""
+  grants_manager:
+    name: ""
+    email: ""
+
+target_grants:
+  focus_areas:
+    - "youth financial literacy"
+    - "AI literacy and education"
+    - "small business development"
+    - "workforce readiness"
+    - "entrepreneurship education"
+    - "digital literacy"
+    - "economic mobility for underserved youth"
+  eligible_categories:
+    - code: "ED"
+      name: "Education"
+    - code: "ST"
+      name: "Science and Technology and Other Research and Development"
+    - code: "BC"
+      name: "Business and Commerce"
+    - code: "IS"
+      name: "Income Security and Social Services"
+  preferred_agencies:
+    - code: "ED"
+      name: "Department of Education"
+    - code: "SBA"
+      name: "Small Business Administration"
+    - code: "NSF"
+      name: "National Science Foundation"
+    - code: "DOC"
+      name: "Department of Commerce"
+    - code: "EDA"
+      name: "Economic Development Administration"
+
+compliance:
+  indirect_cost_rate:
+    type: de_minimis_10  # negotiated | de_minimis_10 | none
+    rate: 10
+    cognizant_agency: ""  # Only for negotiated rates
+    agreement_expiration: ""  # Only for negotiated rates
+  single_audit:
+    status: not_applicable  # compliant | needed | not_applicable
+    last_audit_date: ""
+    threshold_met: false  # true if org spends $750K+ federal funds/year
+
+budget_defaults:
+  escalation_rate: 3  # Annual % increase for personnel
+  equipment_threshold: 5000  # $ threshold for equipment vs supplies
+  fringe_rate: 30  # % of personnel for fringe benefits
+  travel_per_diem:
+    domestic: 200  # $/day
+    lodging: 150  # $/night
+
+narrative:
+  mission: >
+    AI Incubator for Main Street builds practical pathways for Kentucky's youth
+    and small businesses to thrive in an AI-transformed economy. Our flagship
+    program, Springer, teaches teens the skills no one else is teaching: selling,
+    financial literacy, networking, AI as a learning tool, and self-sufficiency.
+    We don't teach kids to build the next unicorn. We teach them to survive and
+    thrive in the new world.
+  differentiator: >
+    Every other youth entrepreneurship camp teaches pitch decks and business model
+    canvases. Springer teaches kids how to sell to a real person, how money actually
+    works, and how to use AI to learn anything. Our mentors are community leaders
+    who run real local businesses, not tech execs. The result is skills and a
+    lasting support network — not a certificate.
+
+past_performance:
+  # No past grants yet — new organization
+  []
+
+discovery:
+  scan_interval_days: 7  # How often to scan for new grants
+  rss_feeds:
+    # Only add feeds you've verified work. Most agencies don't have RSS.
+    # - url: "https://grants.nih.gov/funding/searchGuide/rss.xml"
+    #   agency: "NIH"
+    #   label: "NIH Guide"
