@@ -116,12 +116,13 @@
         </article>
       </div>
 
-      <div class="context-strip">
-        <strong>{context.length} search items attached</strong>
-        <a href="#/search-provider">Refresh search context</a>
+      <div class="form-footer">
+        <div class="context-strip">
+          <strong>{context.length} search items attached</strong>
+          <a href="#/search-provider">Refresh search context</a>
+        </div>
+        <button class="run-button" disabled={loading}>{loading ? 'Debating' : 'Run debate'}</button>
       </div>
-
-      <button class="run-button" disabled={loading}>{loading ? 'Debating' : 'Run debate'}</button>
     </form>
 
     <aside class="context-panel">
@@ -173,7 +174,7 @@
 
 <style>
   .debate-page {
-    padding: clamp(2rem, 5vw, 4rem);
+    padding: clamp(1.5rem, 4vw, 3rem);
     background:
       linear-gradient(180deg, #fffdf6, #f0eee4);
     min-height: calc(100vh - 72px);
@@ -199,8 +200,8 @@
   }
 
   h1 {
-    font-size: clamp(2.7rem, 6vw, 5.8rem);
-    line-height: 0.9;
+    font-size: clamp(2.35rem, 5vw, 4.8rem);
+    line-height: 0.94;
     margin-top: 0.75rem;
   }
 
@@ -208,7 +209,7 @@
     margin-top: 1rem;
     max-width: 680px;
     color: var(--muted);
-    font-size: 1.05rem;
+    font-size: 1rem;
   }
 
   .studio-grid {
@@ -226,9 +227,9 @@
   }
 
   .setup {
-    padding: 1rem;
+    padding: 0.875rem;
     display: grid;
-    gap: 1rem;
+    gap: 0.85rem;
   }
 
   input,
@@ -237,50 +238,79 @@
     border-radius: 0;
     border-color: var(--line);
     background: white;
+    padding: 0.55rem 0.7rem;
+    font-size: 0.9rem;
   }
 
   .agents {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 1rem;
+    gap: 0.85rem;
   }
 
   .agents article {
     display: grid;
-    gap: 0.65rem;
-    padding: 1rem;
+    gap: 0.55rem;
+    padding: 0.85rem;
     background: var(--paper);
     border: 1px solid var(--line);
   }
 
+  .form-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+
   .context-strip {
     display: flex;
+    flex: 1;
     justify-content: space-between;
+    align-items: center;
     gap: 1rem;
-    padding: 0.85rem 1rem;
+    min-height: 38px;
+    padding: 0.55rem 0.7rem;
     background: var(--signal);
     border: 1px solid var(--ink);
+    font-size: 0.86rem;
   }
 
   .context-strip a {
     color: var(--ink);
     font-weight: 900;
+    white-space: nowrap;
   }
 
   .run-button {
-    min-height: 48px;
+    min-height: 38px;
+    width: auto;
+    padding: 0 0.9rem;
+    border: 1px solid var(--ink);
     background: var(--ink);
     color: var(--paper);
+    font-size: 0.86rem;
     font-weight: 900;
+    white-space: nowrap;
+  }
+
+  .run-button:hover:not(:disabled) {
+    background: var(--sage);
+    border-color: var(--sage);
+  }
+
+  .run-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
   }
 
   .context-panel {
-    padding: 1rem;
+    padding: 0.9rem;
   }
 
   .context-panel h2,
   .debate-output h2 {
-    font-size: 1.5rem;
+    font-size: 1.25rem;
   }
 
   .debate-output-head {
@@ -301,7 +331,7 @@
   }
 
   .context-item {
-    padding: 0.8rem 0;
+    padding: 0.65rem 0;
     border-top: 1px solid var(--line);
   }
 
@@ -328,7 +358,7 @@
 
   .rounds article {
     max-width: 860px;
-    padding: 1rem;
+    padding: 0.85rem;
     background: white;
     border: 1px solid var(--line);
   }
@@ -359,7 +389,7 @@
 
   .synthesis {
     margin-top: 1rem;
-    padding: 1rem;
+    padding: 0.85rem;
     background: var(--ink);
     color: var(--paper);
   }
@@ -372,6 +402,20 @@
     .studio-grid,
     .agents {
       grid-template-columns: 1fr;
+    }
+
+    .form-footer {
+      align-items: stretch;
+      flex-direction: column;
+    }
+
+    .context-strip {
+      display: grid;
+      gap: 0.35rem;
+    }
+
+    .run-button {
+      width: 100%;
     }
 
     .debate-output-head {
