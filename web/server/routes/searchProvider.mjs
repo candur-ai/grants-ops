@@ -72,56 +72,6 @@ function describeProfile(profile) {
   return parts.join('; ');
 }
 
-function splitDDGText(text) {
-  const idx = text.indexOf(' - ');
-  if (idx === -1) return { title: text, snippet: '' };
-  return { title: text.slice(0, idx).trim(), snippet: text.slice(idx + 3).trim() };
-}
-
-async function ddgSearch(query, profile, signal) {
-  const params = new URLSearchParams({
-    q: query,
-    kl: profile.kl,
-    format: 'json',
-    no_html: '1',
-    skip_disambig: '1',
-  });
-  const response = await fetch(`https://api.duckduckgo.com/?${params}`, {
-    signal,
-    headers: { 'user-agent': 'grant-ops-web/1.0' },
-  });
-  if (!response.ok) throw new Error(`DuckDuckGo returned ${response.status}`);
-  const payload = await response.json();
-  const results = [];
-
-  if (payload.AbstractText) {
-    results.push({
-      source: `ddg:${profile.id}`,
-      title: 'Featured Answer',
-      url: payload.AbstractURL,
-      snippet: payload.AbstractText,
-      is_ai: false,
-    });
-  }
-
-  for (const item of payload.Results || []) {
-    if (!item.Text) continue;
-    const { title, snippet } = splitDDGText(item.Text);
-    results.push({ source: `ddg:${profile.id}`, title, url: item.FirstURL, snippet, is_ai: false });
-  }
-
-  for (const item of payload.RelatedTopics || []) {
-    const topics = item.Topics?.length ? item.Topics : [item];
-    for (const topic of topics) {
-      if (!topic.Text || topic.FirstURL?.includes('duckduckgo.com/c/') || topic.FirstURL?.includes('duckduckgo.com/d/')) continue;
-      const { title, snippet } = splitDDGText(topic.Text);
-      results.push({ source: `ddg:${profile.id}`, title, url: topic.FirstURL, snippet, is_ai: false });
-    }
-  }
-
-  return results.slice(0, 8);
-}
-
 async function googleSearch(query, profile, signal) {
   if (!process.env.SERPAPI_KEY) return [];
   const params = new URLSearchParams({
@@ -442,7 +392,6 @@ router.get('/profiles', (_req, res) => {
 router.get('/sources', (_req, res) => {
   const profiled = [
     { id: 'google', displayName: 'Google profiles', enabled: hasUsableKey(process.env.SERPAPI_KEY), reason: 'Set SERPAPI_KEY' },
-    { id: 'ddg', displayName: 'DuckDuckGo profiles', enabled: true, reason: '' },
     { id: 'brave', displayName: 'Brave profiles', enabled: hasUsableKey(process.env.BRAVE_API_KEY), reason: 'Set BRAVE_API_KEY' },
   ];
   res.json([...profiled, ...FIXED_SOURCES]);
@@ -466,7 +415,7 @@ router.get('/stream', async (req, res) => {
     .map((id) => PROFILES.find((profile) => profile.id === id.trim()))
     .filter(Boolean);
   const selectedSources = new Set(
-    String(req.query.sources || 'ddg,reddit,claude,openai,twitter,tiktok,google,brave')
+    String(req.query.sources || 'reddit,claude,openai,twitter,tiktok,google,brave')
       .split(',')
       .map((id) => id.trim())
       .filter(Boolean)
@@ -483,9 +432,6 @@ router.get('/stream', async (req, res) => {
     const tasks = [];
     if (selectedSources.has('google') && hasUsableKey(process.env.SERPAPI_KEY)) {
       tasks.push({ id: `google:${profile.id}`, name: `Google - ${profile.displayName}`, run: googleSearch });
-    }
-    if (selectedSources.has('ddg') && !profile.googleOnly) {
-      tasks.push({ id: `ddg:${profile.id}`, name: `DuckDuckGo - ${profile.displayName}`, run: ddgSearch });
     }
     if (selectedSources.has('brave') && !profile.googleOnly && hasUsableKey(process.env.BRAVE_API_KEY)) {
       tasks.push({ id: `brave:${profile.id}`, name: `Brave - ${profile.displayName}`, run: braveSearch });

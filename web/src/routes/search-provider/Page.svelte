@@ -5,7 +5,7 @@
   let profiles = $state([]);
   let sources = $state([]);
   let selectedProfiles = $state(new Set(['global_web', 'us_web']));
-  let selectedSources = $state(new Set(['ddg', 'reddit', 'claude', 'openai', 'twitter', 'tiktok', 'google', 'brave']));
+  let selectedSources = $state(new Set(['reddit', 'claude', 'openai', 'twitter', 'tiktok', 'google', 'brave']));
   let profileLens = $state({
     occupation: 'grant strategist',
     location: 'United States',
@@ -53,7 +53,7 @@
     if (fixed) return fixed.displayName;
     const [provider, id] = source.split(':');
     const profile = profiles.find((p) => p.id === id);
-    const providerName = provider === 'ddg' ? 'DuckDuckGo' : provider === 'brave' ? 'Brave' : 'Google';
+    const providerName = provider === 'brave' ? 'Brave' : 'Google';
     return `${providerName} - ${profile?.displayName || id}`;
   }
 
@@ -177,7 +177,7 @@
               type="button"
               class:selected={selectedProfiles.has(profile.id)}
               onclick={() => toggleProfile(profile.id)}
-              title={profile.googleOnly ? 'Google-only mode' : 'Google and DuckDuckGo when available'}
+              title={profile.googleOnly ? 'Google-only mode' : 'Profile-aware web search when available'}
             >
               {profile.displayName}
             </button>
