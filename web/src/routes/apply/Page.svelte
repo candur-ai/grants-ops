@@ -41,9 +41,10 @@
 
   let reports = $state([]);
   let selectedReportId = $state('');
-  let selectedReport = $derived(reports.find((report) => report.id === selectedReportId) || null);
+  let selectedReport = $derived(reports.find((report) => String(report.id) === String(selectedReportId)) || null);
   let opportunity = $state(null);
   let loading = $state(true);
+  let loadingSavedPacket = $state(false);
   let generating = $state(false);
   let saving = $state(false);
   let generated = $state({});
@@ -73,9 +74,39 @@
 
     try {
       opportunity = await api.getGrant(selectedReport.opportunity_id);
+      await loadSavedPacket();
     } catch (err) {
       toast(`Could not load opportunity details: ${err.message}`, 'error');
     }
+  }
+
+  async function loadSavedPacket() {
+    if (!selectedReport?.id) return;
+
+    loadingSavedPacket = true;
+    try {
+      const packet = await api.getLatestApplicationPacket(`report_id=${encodeURIComponent(selectedReport.id)}`);
+      applySavedPacket(packet);
+    } catch (err) {
+      if (!/No saved application packet/i.test(err.message)) {
+        toast(err.message, 'error');
+      }
+    } finally {
+      loadingSavedPacket = false;
+    }
+  }
+
+  function applySavedPacket(packet) {
+    if (!packet) return;
+
+    const nextGenerated = {};
+    for (const section of packet.sections || []) {
+      if (section?.id) nextGenerated[section.id] = section.content || '';
+    }
+
+    generated = nextGenerated;
+    budget = packet.budget || null;
+    exportInfo = packet;
   }
 
   async function generatePacket() {
@@ -125,7 +156,7 @@
     saving = true;
     error = '';
     try {
-      exportInfo = await api.saveApplicationPacket({
+      const packet = await api.saveApplicationPacket({
         report: selectedReport,
         opportunity,
         sections: sections.map((section) => ({
@@ -135,6 +166,7 @@
         })),
         budget: budgetDraft,
       });
+      applySavedPacket(packet);
       toast('Application packet saved', 'success');
     } catch (err) {
       error = err.message;
@@ -232,6 +264,10 @@
     { label: 'Budget draft created', done: Boolean(budget) },
     { label: 'Human review complete before submission', done: false },
   ]);
+
+  let savedPacketLabel = $derived(exportInfo?.savedAt
+    ? `Saved ${new Date(exportInfo.savedAt).toLocaleString()}`
+    : '');
 </script>
 
 <div class="page-header">
@@ -271,6 +307,10 @@
     </button>
   </div>
 
+  {#if loadingSavedPacket}
+    <div class="card muted saved-loading">Loading saved application packet...</div>
+  {/if}
+
   {#if selectedReport}
     <div class="overview-grid">
       <section class="card">
@@ -306,7 +346,7 @@
       <section class="card export-card">
         <div>
           <h2>Saved Export</h2>
-          <p class="muted">Stored in the private Supabase Storage bucket <strong>{exportInfo.bucket}</strong>. Links expire in 7 days.</p>
+          <p class="muted">{savedPacketLabel}. Stored in the private Supabase Storage bucket <strong>{exportInfo.bucket}</strong>. Links expire in 7 days.</p>
         </div>
         <div class="export-actions">
           <button class="btn btn-primary" type="button" onclick={copyPacketForGoogleDocs}>Copy for Google Docs</button>
@@ -420,6 +460,10 @@
     justify-content: space-between;
     gap: 1rem;
     align-items: center;
+    margin-top: 1rem;
+  }
+
+  .saved-loading {
     margin-top: 1rem;
   }
 

@@ -4,12 +4,22 @@ const router = Router();
 const BUCKET = 'application-packets';
 const SIGNED_URL_TTL = 60 * 60 * 24 * 7;
 
+function packetTableMissing(error) {
+  const message = error?.message || '';
+  return error?.code === '42P01' || /application_packets|does not exist|schema cache/i.test(message);
+}
+
 function slugify(value) {
   return String(value || 'application')
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
     .slice(0, 80) || 'application';
+}
+
+function packetBasePath(orgId, report, opportunity, title) {
+  const reportKey = report?.id ? `report-${report.id}` : `opportunity-${slugify(report?.opportunity_id || opportunity?.id || title)}`;
+  return `${orgId}/reports/${reportKey}`;
 }
 
 function escapeHtml(value) {
@@ -163,6 +173,180 @@ async function uploadText(supabase, path, body, contentType) {
   return data?.signedUrl || '';
 }
 
+function normalizePacket(row, urls = {}) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    reportId: row.report_id,
+    opportunityId: row.opportunity_id,
+    title: row.title,
+    sections: row.sections || [],
+    budget: row.budget || null,
+    markdown: row.markdown || '',
+    html: row.html || '',
+    bucket: row.bucket || BUCKET,
+    markdownPath: row.markdown_path || '',
+    googleDocsPath: row.google_docs_path || '',
+    markdownUrl: urls.markdownUrl || '',
+    googleDocsUrl: urls.googleDocsUrl || '',
+    expiresInSeconds: urls.expiresInSeconds || SIGNED_URL_TTL,
+    savedAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+function packetFromStorage({ reportId, opportunityId, title, markdownPath, googleDocsPath, markdown, html, createdAt, urls = {} }) {
+  return {
+    id: null,
+    reportId: reportId || null,
+    opportunityId: opportunityId || '',
+    title: title || '',
+    sections: [],
+    budget: null,
+    markdown: markdown || '',
+    html: html || '',
+    bucket: BUCKET,
+    markdownPath,
+    googleDocsPath,
+    markdownUrl: urls.markdownUrl || '',
+    googleDocsUrl: urls.googleDocsUrl || '',
+    expiresInSeconds: SIGNED_URL_TTL,
+    savedAt: createdAt || null,
+    updatedAt: createdAt || null,
+  };
+}
+
+async function signedUrlForPath(supabase, path) {
+  if (!path) return '';
+  const { data, error } = await supabase.storage
+    .from(BUCKET)
+    .createSignedUrl(path, SIGNED_URL_TTL);
+
+  if (error) throw error;
+  return data?.signedUrl || '';
+}
+
+async function downloadText(supabase, path) {
+  if (!path) return '';
+  const { data, error } = await supabase.storage.from(BUCKET).download(path);
+  if (error) return '';
+  return data ? await data.text() : '';
+}
+
+async function latestPacketFromStorage(req, { reportId, opportunityId }) {
+  if (!reportId && !opportunityId) return null;
+
+  const prefix = reportId
+    ? `${req.orgId}/reports/report-${reportId}`
+    : `${req.orgId}/reports/opportunity-${slugify(opportunityId)}`;
+
+  const { data, error } = await req.supabase.storage.from(BUCKET).list(prefix, {
+    limit: 100,
+    sortBy: { column: 'name', order: 'desc' },
+  });
+
+  if (error || !data?.length) return null;
+
+  const markdownFile = data.find((item) => item.name.endsWith('.md'));
+  if (!markdownFile) return null;
+
+  const markdownPath = `${prefix}/${markdownFile.name}`;
+  const stamp = markdownFile.name.replace(/\.md$/, '');
+  const googleDocsPath = `${prefix}/${stamp}.html`;
+  const [markdown, html, markdownUrl, googleDocsUrl] = await Promise.all([
+    downloadText(req.supabase, markdownPath),
+    downloadText(req.supabase, googleDocsPath),
+    signedUrlForPath(req.supabase, markdownPath),
+    signedUrlForPath(req.supabase, googleDocsPath),
+  ]);
+
+  return packetFromStorage({
+    reportId,
+    opportunityId,
+    markdownPath,
+    googleDocsPath,
+    markdown,
+    html,
+    createdAt: markdownFile.created_at || markdownFile.updated_at || null,
+    urls: { markdownUrl, googleDocsUrl },
+  });
+}
+
+router.get('/', async (req, res, next) => {
+  try {
+    if (!req.orgId) return res.json([]);
+
+    const reportId = req.query.report_id ? Number(req.query.report_id) : null;
+    const opportunityId = req.query.opportunity_id ? String(req.query.opportunity_id) : '';
+
+    let query = req.supabase
+      .from('application_packets')
+      .select('id, report_id, opportunity_id, title, sections, budget, markdown, html, bucket, markdown_path, google_docs_path, created_at, updated_at')
+      .eq('org_id', req.orgId)
+      .order('created_at', { ascending: false });
+
+    if (reportId) query = query.eq('report_id', reportId);
+    if (opportunityId) query = query.eq('opportunity_id', opportunityId);
+
+    const { data, error } = await query.limit(25);
+    if (error) {
+      if (packetTableMissing(error)) return res.json([]);
+      throw error;
+    }
+
+    res.json((data || []).map((row) => normalizePacket(row)));
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/latest', async (req, res, next) => {
+  try {
+    if (!req.orgId) return res.status(404).json({ error: 'No organization profile found' });
+
+    const reportId = req.query.report_id ? Number(req.query.report_id) : null;
+    const opportunityId = req.query.opportunity_id ? String(req.query.opportunity_id) : '';
+
+    if (!reportId && !opportunityId) {
+      return res.status(400).json({ error: 'report_id or opportunity_id is required' });
+    }
+
+    let query = req.supabase
+      .from('application_packets')
+      .select('*')
+      .eq('org_id', req.orgId)
+      .order('created_at', { ascending: false })
+      .limit(1);
+
+    if (reportId) query = query.eq('report_id', reportId);
+    if (opportunityId) query = query.eq('opportunity_id', opportunityId);
+
+    const { data, error } = await query.maybeSingle();
+    if (error) {
+      if (packetTableMissing(error)) {
+        const storagePacket = await latestPacketFromStorage(req, { reportId, opportunityId });
+        if (storagePacket) return res.json(storagePacket);
+        return res.status(404).json({ error: 'No saved application packet found' });
+      }
+      throw error;
+    }
+    if (!data) {
+      const storagePacket = await latestPacketFromStorage(req, { reportId, opportunityId });
+      if (storagePacket) return res.json(storagePacket);
+      return res.status(404).json({ error: 'No saved application packet found' });
+    }
+
+    const [markdownUrl, googleDocsUrl] = await Promise.all([
+      signedUrlForPath(req.supabase, data.markdown_path),
+      signedUrlForPath(req.supabase, data.google_docs_path),
+    ]);
+
+    res.json(normalizePacket(data, { markdownUrl, googleDocsUrl }));
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.post('/', async (req, res, next) => {
   try {
     if (!req.orgId) return res.status(400).json({ error: 'Create an organization profile first' });
@@ -175,7 +359,9 @@ router.post('/', async (req, res, next) => {
     const markdown = buildMarkdown({ report, opportunity, sections, budget });
     const html = buildGoogleDocsHtml(markdown);
     const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const base = `${req.orgId}/${slugify(report?.program || opportunity?.opportunityTitle)}/${stamp}`;
+    const title = report?.program || opportunity?.opportunityTitle || opportunity?.synopsis?.opportunityTitle || 'Grant Application Packet';
+    const opportunityId = String(report?.opportunity_id || opportunity?.id || '');
+    const base = `${packetBasePath(req.orgId, report, opportunity, title)}/${stamp}`;
 
     await ensureBucket(req.supabase);
 
@@ -187,17 +373,48 @@ router.post('/', async (req, res, next) => {
       uploadText(req.supabase, googleDocsPath, html, 'text/html; charset=utf-8'),
     ]);
 
+    const { data: packet, error: packetError } = await req.supabase
+      .from('application_packets')
+      .insert({
+        org_id: req.orgId,
+        report_id: report?.id || null,
+        opportunity_id: opportunityId,
+        title,
+        sections: sections || [],
+        budget: budget || null,
+        markdown,
+        html,
+        bucket: BUCKET,
+        markdown_path: markdownPath,
+        google_docs_path: googleDocsPath,
+      })
+      .select('*')
+      .single();
+
+    if (packetError) {
+      if (packetTableMissing(packetError)) {
+        return res.json({
+          ok: true,
+          warning: 'Application packet database table is missing. Saved to Storage only. Run web/supabase/migrations/002_application_packets.sql in Supabase to enable database packet history.',
+          ...packetFromStorage({
+            reportId: report?.id || null,
+            opportunityId,
+            title,
+            markdownPath,
+            googleDocsPath,
+            markdown,
+            html,
+            createdAt: new Date().toISOString(),
+            urls: { markdownUrl, googleDocsUrl },
+          }),
+        });
+      }
+      throw packetError;
+    }
+
     res.json({
       ok: true,
-      bucket: BUCKET,
-      markdownPath,
-      googleDocsPath,
-      markdownUrl,
-      googleDocsUrl,
-      markdown,
-      html,
-      expiresInSeconds: SIGNED_URL_TTL,
-      savedAt: new Date().toISOString(),
+      ...normalizePacket(packet, { markdownUrl, googleDocsUrl }),
     });
   } catch (err) {
     next(err);

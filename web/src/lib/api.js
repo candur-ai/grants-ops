@@ -107,6 +107,8 @@ export const api = {
 
   // Application packets
   saveApplicationPacket: (body) => request('POST', '/application-packets', body),
+  getApplicationPackets: (params = '') => request('GET', `/application-packets${params ? '?' + params : ''}`),
+  getLatestApplicationPacket: (params = '') => request('GET', `/application-packets/latest${params ? '?' + params : ''}`),
 
   // States
   getStates: () => request('GET', '/states'),
