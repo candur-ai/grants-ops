@@ -304,12 +304,26 @@
     padding: 0 1rem;
     border: 1px solid var(--ink);
     background: white;
+    color: var(--ink);
     font-weight: 900;
+    white-space: nowrap;
   }
 
   .console-button.primary {
     background: var(--ink);
-    color: var(--nav-text);
+    color: var(--paper);
+    min-width: 88px;
+  }
+
+  .console-button.primary:hover:not(:disabled) {
+    background: var(--sage);
+    border-color: var(--sage);
+    color: var(--card);
+  }
+
+  .console-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
   }
 
   .controls-grid {

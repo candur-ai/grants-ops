@@ -214,7 +214,7 @@
   .run-button {
     min-height: 48px;
     background: var(--ink);
-    color: var(--nav-text);
+    color: var(--paper);
     font-weight: 900;
   }
 
@@ -284,7 +284,7 @@
     margin-top: 1rem;
     padding: 1rem;
     background: var(--ink);
-    color: var(--nav-text);
+    color: var(--paper);
   }
 
   .synthesis p {
