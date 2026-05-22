@@ -15,6 +15,7 @@
   let context = $state([]);
   let loading = $state(false);
   let debate = $state(null);
+  let liveStatus = $state('');
 
   $effect(() => {
     try {
@@ -26,16 +27,60 @@
 
   async function runDebate() {
     loading = true;
-    debate = null;
+    liveStatus = 'Starting debate...';
+    debate = { title: 'Starting debate...', rounds: [], synthesis: '' };
     try {
       const res = await fetch('/api/v1/debate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ idea, agentA, agentB, context }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Debate failed');
-      debate = data;
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({ error: res.statusText }));
+        throw new Error(data.error || 'Debate failed');
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const messages = buffer.split('\n\n');
+        buffer = messages.pop() || '';
+
+        for (const message of messages) {
+          const dataLine = message.split('\n').find((line) => line.startsWith('data: '));
+          if (!dataLine) continue;
+
+          const data = dataLine.slice(6);
+          if (data === '[DONE]') {
+            liveStatus = 'Debate complete';
+            break;
+          }
+
+          const event = JSON.parse(data);
+          if (event.type === 'error') throw new Error(event.error || 'Debate failed');
+
+          if (event.type === 'title') {
+            debate = { ...debate, title: event.title };
+            liveStatus = 'Framing the debate...';
+          } else if (event.type === 'round') {
+            debate = { ...debate, rounds: [...(debate.rounds || []), event.round] };
+            liveStatus = `${event.round.speaker} responded`;
+          } else if (event.type === 'synthesis') {
+            debate = { ...debate, synthesis: event.synthesis };
+            liveStatus = 'Synthesizing the argument...';
+          } else if (event.type === 'result') {
+            debate = event.debate;
+            liveStatus = 'Debate complete';
+          }
+        }
+      }
     } catch (error) {
       toast(error.message, 'error');
     } finally {
@@ -96,7 +141,12 @@
 
   {#if debate}
     <section class="debate-output">
-      <h2>{debate.title}</h2>
+      <div class="debate-output-head">
+        <h2>{debate.title}</h2>
+        {#if loading || liveStatus}
+          <span>{liveStatus}</span>
+        {/if}
+      </div>
       <div class="rounds">
         {#each debate.rounds || [] as round, index}
           <article class:indexed={index % 2 === 1}>
@@ -104,6 +154,12 @@
             <p>{round.text}</p>
           </article>
         {/each}
+        {#if loading}
+          <article class="speaking">
+            <span>Live</span>
+            <p>Waiting for the next agent turn...</p>
+          </article>
+        {/if}
       </div>
       {#if debate.synthesis}
         <div class="synthesis">
@@ -225,7 +281,23 @@
   .context-panel h2,
   .debate-output h2 {
     font-size: 1.5rem;
+  }
+
+  .debate-output-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: baseline;
     margin-bottom: 1rem;
+  }
+
+  .debate-output-head span {
+    color: var(--rust);
+    font-family: var(--font-mono);
+    font-size: 0.74rem;
+    text-transform: uppercase;
+    font-weight: 900;
+    white-space: nowrap;
   }
 
   .context-item {
@@ -266,6 +338,11 @@
     background: #f5f0df;
   }
 
+  .rounds article.speaking {
+    border-style: dashed;
+    color: var(--muted);
+  }
+
   .rounds span {
     color: var(--rust);
     font-family: var(--font-mono);
@@ -295,6 +372,15 @@
     .studio-grid,
     .agents {
       grid-template-columns: 1fr;
+    }
+
+    .debate-output-head {
+      display: block;
+    }
+
+    .debate-output-head span {
+      display: block;
+      margin-top: 0.5rem;
     }
   }
 </style>
