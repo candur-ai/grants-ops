@@ -15,6 +15,68 @@
   let detailModal = $state(null);
   let loadingDetailIds = $state(new Set());
   let addingIds = $state(new Set());
+  const grantProviders = [
+    {
+      name: 'Candid',
+      type: 'Foundation funders',
+      description: 'Research private foundations, grantmakers, and nonprofit funding relationships.',
+      href: () => 'https://fconline.foundationcenter.org/',
+    },
+    {
+      name: 'GrantWatch',
+      type: 'Broad grant database',
+      description: 'Search foundation, corporate, state, local, and federal grant listings.',
+      href: (q) => `https://www.grantwatch.com/grant-search.php?keyword=${encodeURIComponent(q)}`,
+    },
+    {
+      name: 'Instrumentl',
+      type: 'Grant discovery',
+      description: 'Prospect, match, and track nonprofit and research grant opportunities.',
+      href: () => 'https://www.instrumentl.com/search-grants',
+    },
+    {
+      name: 'GrantStation',
+      type: 'Curated grant database',
+      description: 'Find private, federal, and state opportunities for nonprofits and education.',
+      href: () => 'https://grantstation.com/',
+    },
+    {
+      name: 'SBIR/STTR',
+      type: 'Small business innovation',
+      description: 'Federal small business innovation and technology transfer opportunities.',
+      href: () => 'https://www.sbir.gov/funding',
+    },
+    {
+      name: 'NSF',
+      type: 'Research and education',
+      description: 'National Science Foundation solicitations and funding opportunities.',
+      href: () => 'https://www.nsf.gov/funding/',
+    },
+    {
+      name: 'NIH',
+      type: 'Health and research',
+      description: 'NIH grants, funding guidance, notices, and opportunity discovery.',
+      href: () => 'https://grants.nih.gov/funding',
+    },
+    {
+      name: 'DOJ JustGrants',
+      type: 'Justice and community safety',
+      description: 'Department of Justice funding opportunities and application guidance.',
+      href: () => 'https://justicegrants.usdoj.gov/funding',
+    },
+    {
+      name: 'EDA',
+      type: 'Economic development',
+      description: 'Regional growth, workforce, entrepreneurship, and resilience funding.',
+      href: () => 'https://www.eda.gov/funding',
+    },
+    {
+      name: 'USDA Rural Development',
+      type: 'Rural and Main Street programs',
+      description: 'Rural business, community facilities, utilities, and housing programs.',
+      href: () => 'https://www.rd.usda.gov/programs-services',
+    },
+  ];
 
   function getOpportunityId(opp) {
     return opp.id || opp.opportunityId || opp.opportunity_id;
@@ -147,6 +209,10 @@
     if (!n) return '--';
     return '$' + Number(n).toLocaleString();
   }
+
+  function providerHref(provider) {
+    return provider.href(keyword.trim() || 'grants');
+  }
 </script>
 
 <div class="page-header">
@@ -194,6 +260,25 @@
       </div>
     {/if}
   </form>
+</div>
+
+<div class="card provider-card">
+  <div class="provider-header">
+    <div>
+      <h2>Other grant providers</h2>
+      <p>Grants.gov remains the structured federal search. These links open additional provider portals using your current search angle where supported.</p>
+    </div>
+    <a class="btn btn-sm btn-secondary" href="#/search-provider">Use evidence search</a>
+  </div>
+  <div class="provider-grid">
+    {#each grantProviders as provider}
+      <a class="provider-link" href={providerHref(provider)} target="_blank" rel="noreferrer">
+        <span>{provider.type}</span>
+        <strong>{provider.name}</strong>
+        <p>{provider.description}</p>
+      </a>
+    {/each}
+  </div>
 </div>
 
 <!-- Results -->
@@ -413,6 +498,72 @@
     margin-bottom: 1rem;
     font-size: 0.875rem;
     color: var(--text-secondary);
+  }
+
+  .provider-card {
+    margin-top: 1rem;
+  }
+
+  .provider-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+  }
+
+  .provider-header h2 {
+    font-size: 1rem;
+    margin-bottom: 0.25rem;
+  }
+
+  .provider-header p {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    max-width: 720px;
+  }
+
+  .provider-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 0.75rem;
+  }
+
+  .provider-link {
+    display: block;
+    padding: 0.875rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg);
+    transition: border-color 0.15s ease, transform 0.15s ease;
+  }
+
+  .provider-link:hover {
+    border-color: var(--primary);
+    color: inherit;
+    transform: translateY(-1px);
+  }
+
+  .provider-link span {
+    display: block;
+    color: var(--text-secondary);
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .provider-link strong {
+    display: block;
+    margin-top: 0.25rem;
+    font-size: 0.95rem;
+  }
+
+  .provider-link p {
+    color: var(--text-secondary);
+    font-size: 0.8125rem;
+    line-height: 1.45;
+    margin-top: 0.35rem;
   }
 
   .pagination {

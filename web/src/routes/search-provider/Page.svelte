@@ -5,7 +5,7 @@
   let profiles = $state([]);
   let sources = $state([]);
   let selectedProfiles = $state(new Set(['global_web', 'us_web']));
-  let selectedSources = $state(new Set(['reddit', 'claude', 'openai', 'twitter', 'tiktok', 'google', 'brave']));
+  let selectedSources = $state(new Set(['grant_portals', 'reddit', 'claude', 'openai', 'twitter', 'tiktok', 'google', 'brave']));
   let profileLens = $state({
     occupation: 'grant strategist',
     location: 'United States',
