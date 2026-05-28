@@ -23,6 +23,12 @@ const PROFILE_FIELDS = [
 
 const FIXED_SOURCES = [
   {
+    id: 'grant_portals',
+    displayName: 'Grant portals',
+    enabled: true,
+    reason: '',
+  },
+  {
     id: 'reddit',
     displayName: 'Reddit',
     enabled: hasUsableKey(process.env.REDDIT_CLIENT_ID) && hasUsableKey(process.env.REDDIT_CLIENT_SECRET),
@@ -134,6 +140,91 @@ async function braveSearch(query, profile, signal) {
 function truncate(text, max = 300) {
   if (!text || text.length <= max) return text || '';
   return `${text.slice(0, max).trim()}...`;
+}
+
+const GRANT_PORTALS = [
+  {
+    id: 'candid',
+    title: 'Candid Foundation Directory',
+    url: 'https://fconline.foundationcenter.org/',
+    type: 'Foundation and nonprofit funders',
+    snippet: 'Research private foundations, grantmakers, and nonprofit funding relationships. Useful for foundation prospecting and funder fit research.',
+  },
+  {
+    id: 'grantwatch',
+    title: 'GrantWatch',
+    url: (query) => `https://www.grantwatch.com/grant-search.php?keyword=${encodeURIComponent(query)}`,
+    type: 'Foundation, corporate, state, local, and federal grants',
+    snippet: 'Broad grant database with keyword search across nonprofit, education, small business, health, and community opportunities.',
+  },
+  {
+    id: 'instrumentl',
+    title: 'Instrumentl',
+    url: 'https://www.instrumentl.com/search-grants',
+    type: 'Grant discovery and tracking',
+    snippet: 'Grant prospecting platform for nonprofits and researchers, with matching, tracking, and funder research workflows.',
+  },
+  {
+    id: 'grantstation',
+    title: 'GrantStation',
+    url: 'https://grantstation.com/',
+    type: 'Private, federal, and state grant database',
+    snippet: 'Curated database for nonprofit and education grant opportunities, useful for foundation and local funding discovery.',
+  },
+  {
+    id: 'sbir',
+    title: 'SBIR/STTR Funding',
+    url: 'https://www.sbir.gov/funding',
+    type: 'Small business innovation funding',
+    snippet: 'Federal small business innovation and technology transfer opportunities across participating agencies.',
+  },
+  {
+    id: 'nsf',
+    title: 'NSF Funding Opportunities',
+    url: 'https://www.nsf.gov/funding/',
+    type: 'Science, engineering, education, and research grants',
+    snippet: 'National Science Foundation funding opportunities, solicitations, program descriptions, and education/research initiatives.',
+  },
+  {
+    id: 'nih',
+    title: 'NIH Grants & Funding',
+    url: 'https://grants.nih.gov/funding',
+    type: 'Health and biomedical research funding',
+    snippet: 'NIH funding information, notices, policy guidance, and opportunity discovery for health, research, and translational work.',
+  },
+  {
+    id: 'justgrants',
+    title: 'DOJ JustGrants',
+    url: 'https://justicegrants.usdoj.gov/funding',
+    type: 'Justice, community safety, victim services, and legal system grants',
+    snippet: 'Department of Justice funding opportunities and application guidance for community and justice-related programs.',
+  },
+  {
+    id: 'eda',
+    title: 'EDA Funding Opportunities',
+    url: 'https://www.eda.gov/funding',
+    type: 'Economic development funding',
+    snippet: 'U.S. Economic Development Administration funding for regional growth, workforce, entrepreneurship, and community resilience.',
+  },
+  {
+    id: 'usda-rd',
+    title: 'USDA Rural Development Programs',
+    url: 'https://www.rd.usda.gov/programs-services',
+    type: 'Rural business, community facilities, utilities, and housing programs',
+    snippet: 'USDA Rural Development programs that can support Main Street infrastructure, rural business growth, and community services.',
+  },
+];
+
+function grantPortalSearch(query) {
+  const cleanQuery = query.trim();
+  return GRANT_PORTALS.map((portal) => ({
+    source: 'grant_portals',
+    title: portal.title,
+    url: typeof portal.url === 'function' ? portal.url(cleanQuery) : portal.url,
+    snippet: `${portal.type}. ${portal.snippet} Search angle: ${cleanQuery}`,
+    provider_id: portal.id,
+    is_ai: false,
+  }));
 }
 
 let redditToken = null;
@@ -415,7 +506,7 @@ router.get('/stream', async (req, res) => {
     .map((id) => PROFILES.find((profile) => profile.id === id.trim()))
     .filter(Boolean);
   const selectedSources = new Set(
-    String(req.query.sources || 'reddit,claude,openai,twitter,tiktok,google,brave')
+    String(req.query.sources || 'grant_portals,reddit,claude,openai,twitter,tiktok,google,brave')
       .split(',')
       .map((id) => id.trim())
       .filter(Boolean)
@@ -452,6 +543,12 @@ router.get('/stream', async (req, res) => {
   }
 
   const fixedTasks = [
+    {
+      id: 'grant_portals',
+      name: 'Grant portals',
+      enabled: selectedSources.has('grant_portals'),
+      run: () => grantPortalSearch(expanded.web_query),
+    },
     {
       id: 'reddit',
       name: 'Reddit',
